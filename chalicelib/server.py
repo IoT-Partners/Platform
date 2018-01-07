@@ -8,6 +8,7 @@ All the logic that can and should be tested will be here
 
 from chalice import Chalice, NotFoundError, Response
 import json
+from datetime import datetime
 import boto3
 import logging
 
@@ -45,10 +46,21 @@ class Server:
             raise NotFoundError("Error adding an element on dynamodb")
         self.log.debug("print: Data persisted")
 
-    def parse_lora_json(self, json_body):
+    @staticmethod
+    def parse_lora_json(json_body):
         jsonbody = json.loads(json_body)
         time = jsonbody["DevEUI_uplink"]["Time"]
         payload = jsonbody["DevEUI_uplink"]["payload_hex"]
         device_id = jsonbody["DevEUI_uplink"]["DevAddr"]
 
         return {"time": time, "payload": payload, "device_id": device_id, "type": "LORA", "extra": jsonbody}
+
+    @staticmethod
+    def parse_sigfox_dic(sigfox_dic):
+        time = sigfox_dic["query_params"]["time"]
+        d = datetime.utcfromtimestamp(int(time) / 1e3)
+        json_date = str(d.isoformat()) + "Z"
+        payload = sigfox_dic["query_params"]["data"]
+        device_id = sigfox_dic["query_params"]["id"]
+
+        return {"time": json_date, "payload": payload, "device_id": device_id, "type": "SIGFOX"}

@@ -58,5 +58,16 @@ def lora():
         parsed_json = server.parse_lora_json(request.json_body["body"])
         return parsed_json
     except KeyError:
-            app.log.error("Error parsing the document")
+            app.log.error("Error parsing LORA document")
             raise NotFoundError()
+
+
+@app.route('/sigfox')
+def sigfox():
+    try:
+        parsed_dic = Server.parse_sigfox_dic(app.current_request.to_dict())
+        app.log.debug(parsed_dic)
+        return parsed_dic
+    except KeyError:
+        app.log.error("Error parsing SIGFOX document")
+        raise NotFoundError()
