@@ -54,8 +54,9 @@ def index():
 def lora():
     try:
         request = app.current_request
-        jsonbody = json.loads(request.json_body)
-        app.log.debug(jsonbody)
-        return "It worked"
+        app.log.debug(request.json_body)
+        parsed_json = server.parse_lora_json(request.json_body["body"])
+        return parsed_json
     except KeyError:
+            app.log.error("Error parsing the document")
             raise NotFoundError()

@@ -44,3 +44,11 @@ class Server:
         except Exception as e:
             raise NotFoundError("Error adding an element on dynamodb")
         self.log.debug("print: Data persisted")
+
+    def parse_lora_json(self, json_body):
+        jsonbody = json.loads(json_body)
+        time = jsonbody["DevEUI_uplink"]["Time"]
+        payload = jsonbody["DevEUI_uplink"]["payload_hex"]
+        device_id = jsonbody["DevEUI_uplink"]["DevAddr"]
+
+        return {"time": time, "payload": payload, "device_id": device_id, "type": "LORA", "extra": jsonbody}
