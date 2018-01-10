@@ -7,6 +7,9 @@ functions from QRColorChecker modules.
 @mail: eduard@iot-partners.com
 """
 import unittest
+import hashlib
+
+import dateutil
 
 from chalicelib.server import Server
 import sys
@@ -40,11 +43,25 @@ class AppTest(unittest.TestCase):
         payload = jsonbody["DevEUI_uplink"]["payload_hex"]
         device_id = jsonbody["DevEUI_uplink"]["DevAddr"]
 
-        self.assertEqual(parsed_json["time"], time)
+        virtual_tx = device_id + "-" + time
+        hash_object = hashlib.sha256(virtual_tx.encode())
+        hex_dig = hash_object.hexdigest()
+
+        dt = dateutil.parser.parse(time)
+        strftime = dt.strftime("%s")
+        time_millis = int(strftime) * 1000
+
+        self.assertEqual(parsed_json["time_json"], time)
+        self.assertEqual(parsed_json["timeStamp"], int(time_millis))
         self.assertEqual(parsed_json["payload"], payload)
-        self.assertEqual(parsed_json["device_id"], device_id)
+        self.assertEqual(parsed_json["DevEUI"], device_id)
         self.assertEqual(parsed_json["type"], "LORA")
         self.assertEqual(parsed_json["extra"], jsonbody)
+        self.assertEqual(parsed_json["virtual_tx"], hex_dig)
+
+        # print(time + " deviceId: " + device_id + " payload: " + payload)
+        #   str_packet_id = payload[:2]
+        # print("packed_id: " + str_packet_id)
 
     def test_parse_sigfox(self):
         data_dic = {
@@ -77,10 +94,16 @@ class AppTest(unittest.TestCase):
         d = datetime.utcfromtimestamp(int("1515360218723") / 1e3)
         json_date = str(d.isoformat()) + "Z"
 
-        self.assertEqual(parsed_dic["time"], json_date)
+        virtual_tx = "260113E2" + "-" + json_date
+        hash_object = hashlib.sha256(virtual_tx.encode())
+        hex_dig = hash_object.hexdigest()
+
+        self.assertEqual(parsed_dic["time_json"], json_date)
+        self.assertEqual(parsed_dic["timeStamp"], int("1515360218723"))
         self.assertEqual(parsed_dic["payload"], "10bb17f18198100734")
-        self.assertEqual(parsed_dic["device_id"], "260113E2")
+        self.assertEqual(parsed_dic["DevEUI"], "260113E2")
         self.assertEqual(parsed_dic["type"], "SIGFOX")
+        self.assertEqual(parsed_dic["virtual_tx"], hex_dig)
 
     def test_publishing_data_to_SNS(self):
         server = Server(None, self.sns_client, self.log)

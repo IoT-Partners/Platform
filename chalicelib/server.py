@@ -9,6 +9,8 @@ All the logic that can and should be tested will be here
 from chalice import Chalice, NotFoundError, Response
 import json
 from datetime import datetime
+import hashlib
+import dateutil
 import boto3
 import logging
 
@@ -53,7 +55,15 @@ class Server:
         payload = jsonbody["DevEUI_uplink"]["payload_hex"]
         device_id = jsonbody["DevEUI_uplink"]["DevAddr"]
 
-        return {"time": time, "payload": payload, "device_id": device_id, "type": "LORA", "extra": jsonbody}
+        virtual_tx = device_id + "-" + time
+        hash_object = hashlib.sha256(virtual_tx.encode())
+        hex_dig = hash_object.hexdigest()
+
+        dt = dateutil.parser.parse(time)
+        strftime = dt.strftime("%s")
+        time_millis = int(strftime) * 1000
+
+        return {"virtual_tx": hex_dig, "time_json": time, "timeStamp": time_millis, "payload": payload, "DevEUI": device_id, "type": "LORA", "extra": jsonbody}
 
     @staticmethod
     def parse_sigfox_dic(sigfox_dic):
@@ -63,4 +73,8 @@ class Server:
         payload = sigfox_dic["query_params"]["data"]
         device_id = sigfox_dic["query_params"]["id"]
 
-        return {"time": json_date, "payload": payload, "device_id": device_id, "type": "SIGFOX"}
+        virtual_tx = device_id + "-" + json_date
+        hash_object = hashlib.sha256(virtual_tx.encode())
+        hex_dig = hash_object.hexdigest()
+
+        return {"virtual_tx": hex_dig, "timeStamp": int(time), "time_json": json_date, "payload": payload, "DevEUI": device_id, "type": "SIGFOX"}
