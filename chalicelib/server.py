@@ -21,14 +21,15 @@ class Server:
         self.sns_client = sns_client
         self.log = log
 
-    def publish_data(self):
-        self.log.debug("This called from publish_data")
+    def publish_data_store_device(self, data_to_publish):
+        self.log.debug("publishing virtual_tx:" + data_to_publish["virtual_tx"])
+        expected_message = json.dumps(data_to_publish)
+
         self.sns_client.publish(
-            TopicArn="arn:aws:sns:eu-west-1:488643450383:defaultSNS",
-            Subject="Test from Lambda",
-            Message="Good news everyone!"
+            TopicArn="arn:aws:sns:eu-west-1:488643450383:StoreDeviceData",
+            Subject="New IOT Event",
+            Message=expected_message
         )
-        return {"Published Event": "defaultSNS"}
 
     def persist_data(self, event=None, context=None):
         title = "The Big New Movie"

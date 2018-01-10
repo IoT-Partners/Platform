@@ -106,11 +106,27 @@ class AppTest(unittest.TestCase):
         self.assertEqual(parsed_dic["virtual_tx"], hex_dig)
 
     def test_publishing_data_to_SNS(self):
+        data_to_publish = {
+            "DevEUI": "260113E3",
+            "extra": {
+                "DevEUI_uplink": {
+                    "CustomerID": "100001774",
+                    "DevAddr": "260113E3"
+                }
+            },
+            "payload": "010000beef",
+            "timeStamp": 1499366509000,
+            "time_json": "2017-07-06T18:41:49.51+02:00",
+            "type": "LORA",
+            "virtual_tx": "2dd66154468fa5d433420f5bad5d3f580f3dab46fa33e127ef69c511f641ae2f"
+        }
+
         server = Server(None, self.sns_client, self.log)
-        expected_message = "Good news everyone!"
-        server.publish_data()
+        expected_message = json.dumps(data_to_publish)
+        server.publish_data_store_device(data_to_publish)
         self.assertEqual(1, self.sns_client.return_published_times())
         self.assertEqual(expected_message, self.sns_client.return_message())
+        self.assertEqual("arn:aws:sns:eu-west-1:488643450383:StoreDeviceData", self.sns_client.return_topicarn())
 
     def test_persist_data_to_DynamoDB(self):
         server = Server(self.dynamodb, None, self.log)
@@ -156,6 +172,9 @@ class TestSNS:
         self.TopicArn = TopicArn
         self.Subject = Subject
         self.published += 1
+
+    def return_topicarn(self):
+        return self.TopicArn
 
     def return_message(self):
         return self.Message

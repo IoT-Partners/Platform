@@ -55,7 +55,9 @@ def lora():
     try:
         request = app.current_request
         app.log.debug(request.json_body)
-        parsed_json = server.parse_lora_json(request.json_body["body"])
+        parsed_json = Server.parse_lora_json(request.json_body["body"])
+        app.log.debug("Received event virtual_tx:" + parsed_json["virtual_tx"])
+        server.publish_data_store_device(parsed_json)
         return parsed_json
     except KeyError:
             app.log.error("Error parsing LORA document")
@@ -66,7 +68,8 @@ def lora():
 def sigfox():
     try:
         parsed_dic = Server.parse_sigfox_dic(app.current_request.to_dict())
-        app.log.debug(parsed_dic)
+        app.log.debug("Received event virtual_tx:" + parsed_dic["virtual_tx"])
+        server.publish_data_store_device(parsed_dic)
         return parsed_dic
     except KeyError:
         app.log.error("Error parsing SIGFOX document")
