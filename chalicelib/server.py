@@ -31,21 +31,11 @@ class Server:
             Message=expected_message
         )
 
-    def persist_data(self, event=None, context=None):
-        title = "The Big New Movie"
-        year = 2015
+    def persist_data(self, event):
         try:
-            self.table.put_item(
-                Item={
-                    'title': title,
-                    'year': year,
-                    'info': {
-                        'plot': "Nothing happens at all.",
-                        'rating': "0"
-                    }
-                }
-            )
+            self.table.put_item(Item=event)
         except Exception as e:
+            print(e)
             raise NotFoundError("Error adding an element on dynamodb")
         self.log.debug("print: Data persisted")
 
@@ -64,7 +54,8 @@ class Server:
         strftime = dt.strftime("%s")
         time_millis = int(strftime) * 1000
 
-        return {"virtual_tx": hex_dig, "time_json": time, "timeStamp": time_millis, "payload": payload, "DevEUI": device_id, "type": "LORA", "extra": jsonbody}
+        return {"virtual_tx": hex_dig, "time_json": time, "timeStamp": time_millis, "payload": payload,
+                "DevEUI": device_id, "type": "LORA", "extra": jsonbody}
 
     @staticmethod
     def parse_sigfox_dic(sigfox_dic):
@@ -78,4 +69,5 @@ class Server:
         hash_object = hashlib.sha256(virtual_tx.encode())
         hex_dig = hash_object.hexdigest()
 
-        return {"virtual_tx": hex_dig, "timeStamp": int(time), "time_json": json_date, "payload": payload, "DevEUI": device_id, "type": "SIGFOX"}
+        return {"virtual_tx": hex_dig, "timeStamp": int(time), "time_json": json_date, "payload": payload,
+                "DevEUI": device_id, "type": "SIGFOX"}

@@ -18,10 +18,10 @@ app = Chalice(app_name='platform')
 app.log.setLevel(logging.DEBUG)
 app.debug = True
 
-MOVIE_TABLE = os.getenv('APP_TABLE_NAME', 'defaultTable')
+DEVICE_TABLE = os.getenv('APP_TABLE_NAME', 'defaultTable')
 SNS_TOPIC = os.getenv('SNS_TOPIC', 'defaultSNS')
 
-table = boto3.resource('dynamodb').Table(MOVIE_TABLE)
+table = boto3.resource('dynamodb').Table(DEVICE_TABLE)
 sns_client = boto3.client('sns')
 
 server = Server(table, sns_client, app.log)
@@ -29,11 +29,16 @@ server = Server(table, sns_client, app.log)
 
 @app.lambda_function()
 def realtime_lambda_function(event, context):
-    # print("Received event: " + json.dumps(event, indent=2))
-    app.log.debug("This call is from the Lambda")
-    # app.log.debug("From SNS: " + event)
-    server.persist_data(event, context)
-    return "test"
+    app.log.debug("[10] This is the new call from the Lambda realtime")
+
+    for record in event["Records"]:
+        message = record["Sns"]["Message"]
+        message_dic = json.loads(message)
+        print("This is the SNS message! " + message_dic["DevEUI"])
+        server.persist_data(message_dic)
+
+    app.log.debug("realtime lambda done")
+    return "worked"
 
 
 @app.route('/lambda')

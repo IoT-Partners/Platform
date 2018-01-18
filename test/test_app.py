@@ -138,7 +138,7 @@ class AppTest(unittest.TestCase):
                 'rating': "0"
             }
         }
-        server.persist_data()
+        server.persist_data(expected_item)
         self.assertEqual(1, self.dynamodb.return_persisted_times())
         self.assertEqual(expected_item, self.dynamodb.return_persisted_item())
 
