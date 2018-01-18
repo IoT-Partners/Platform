@@ -29,12 +29,13 @@ server = Server(table, sns_client, app.log)
 
 @app.lambda_function()
 def realtime_lambda_function(event, context):
-    app.log.debug("[10] This is the new call from the Lambda realtime")
+    app.log.debug("This is the new call from the Lambda realtime")
 
     for record in event["Records"]:
         message = record["Sns"]["Message"]
         message_dic = json.loads(message)
         print("This is the SNS message! " + message_dic["DevEUI"])
+        print("Print all the message: " + json.dumps(message_dic))
         server.persist_data(message_dic)
 
     app.log.debug("realtime lambda done")

@@ -55,7 +55,7 @@ class Server:
         time_millis = int(strftime) * 1000
 
         return {"virtual_tx": hex_dig, "time_json": time, "timeStamp": time_millis, "payload": payload,
-                "DevEUI": device_id, "type": "LORA", "extra": jsonbody}
+                "DevEUI": device_id, "type": "LORA", "extra": json.dumps(jsonbody)}
 
     @staticmethod
     def parse_sigfox_dic(sigfox_dic):

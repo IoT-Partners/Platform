@@ -56,7 +56,7 @@ class AppTest(unittest.TestCase):
         self.assertEqual(parsed_json["payload"], payload)
         self.assertEqual(parsed_json["DevEUI"], device_id)
         self.assertEqual(parsed_json["type"], "LORA")
-        self.assertEqual(parsed_json["extra"], jsonbody)
+        self.assertEqual(parsed_json["extra"], json.dumps(jsonbody))
         self.assertEqual(parsed_json["virtual_tx"], hex_dig)
 
         # print(time + " deviceId: " + device_id + " payload: " + payload)
