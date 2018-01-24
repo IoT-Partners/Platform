@@ -42,6 +42,16 @@ class Server:
             Message=expected_message
         )
 
+    def publish_data_payload_parser(self, data_to_publish):
+        self.log.debug("publishing virtual_tx for payload" + data_to_publish["virtual_tx"])
+        expected_message = json.dumps(data_to_publish)
+
+        self.sns_client.publish(
+            TopicArn="arn:aws:sns:eu-west-1:488643450383:PayloadParser",
+            Subject="New IOT Event",
+            Message=expected_message
+        )
+
     def persist_data(self, event):
         try:
             self.table.put_item(Item=event)
@@ -63,15 +73,19 @@ class Server:
                     ':val': event["GEO"]
                 }
 
-            self.table.update_item(
-                Key={"timeStamp": event["timeStamp"]},
+            response = self.table.update_item(
+                Key={"timeStamp": event["timeStamp"], "DevEUI": event["DevEUI"]},
                 UpdateExpression=update_expression,
-                ExpressionAttributeValues=expression_attribute_values)
+                ExpressionAttributeValues=expression_attribute_values,
+                ReturnValues="UPDATED_NEW"
+            )
+
+            self.log.debug("print: Data persisted")
+            return response
 
         except Exception as e:
             print(e)
             raise NotFoundError("Error updating an element on dynamodb")
-        self.log.debug("print: Data persisted")
 
     @staticmethod
     def parse_payload(body):
@@ -80,9 +94,9 @@ class Server:
             str_packet_id = payload[:2]
 
             if str_packet_id == "10":
-                return {"timeStamp": body["timeStamp"], "GEO": extract_lat_long(payload)}
+                return {"timeStamp": body["timeStamp"], "DevEUI": body["DevEUI"], "GEO": extract_lat_long(payload)}
             elif str_packet_id == "NEW_TYPE":
-                return {"timeStamp": body["timeStamp"], "TMP": "32"}
+                return {"timeStamp": body["timeStamp"], "DevEUI": body["DevEUI"], "TMP": "32"}
 
         except Exception as e:
             print(e)

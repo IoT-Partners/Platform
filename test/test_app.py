@@ -191,13 +191,14 @@ class AppTest(unittest.TestCase):
         server = Server(self.dynamodb, None, self.log)
         expected_item = {
             "timeStamp": 1499366509000,
+            "DevEUI": "260113E3",
             "GEO": {"lat": "12.5", "lng": "1.4"}
         }
 
         server.update_data(expected_item)
         self.assertEqual(1, self.dynamodb.return_updated_times())
         self.assertEqual(
-            {"timeStamp": 1499366509000},
+            {"timeStamp": 1499366509000, "DevEUI": "260113E3"},
             self.dynamodb.return_updated_item()["Key"])
         self.assertEqual(
             'SET geo = :val',
@@ -255,15 +256,17 @@ class TestDynamoDB:
         self.Key = ''
         self.UpdateExpression = ''
         self.ExpressionAttributeValues = ''
+        self.ReturnValues = ''
 
     def put_item(self, Item):
         self.Item = Item
         self.persisted += 1
 
-    def update_item(self, Key, UpdateExpression, ExpressionAttributeValues):
+    def update_item(self, Key, UpdateExpression, ExpressionAttributeValues, ReturnValues):
         self.Key = Key
         self.UpdateExpression = UpdateExpression
         self.ExpressionAttributeValues = ExpressionAttributeValues
+        self.ReturnValues = ReturnValues
         self.updated += 1
 
     def return_persisted_item(self):
@@ -275,7 +278,8 @@ class TestDynamoDB:
     def return_updated_item(self):
         return {"Key": self.Key,
                 "UpdateExpression": self.UpdateExpression,
-                "ExpressionAttributeValues": self.ExpressionAttributeValues}
+                "ExpressionAttributeValues": self.ExpressionAttributeValues,
+                "ReturnValues": self.ReturnValues}
 
     def return_updated_times(self):
         return self.updated
