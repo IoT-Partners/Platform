@@ -81,6 +81,9 @@ class Server:
 
             if str_packet_id == "10":
                 return {"timeStamp": body["timeStamp"], "GEO": extract_lat_long(payload)}
+            elif str_packet_id == "NEW_TYPE":
+                return {"timeStamp": body["timeStamp"], "TMP": "32"}
+
         except Exception as e:
             print(e)
 
