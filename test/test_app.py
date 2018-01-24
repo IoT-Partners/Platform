@@ -59,10 +59,6 @@ class AppTest(unittest.TestCase):
         self.assertEqual(parsed_json["extra"], json.dumps(jsonbody))
         self.assertEqual(parsed_json["virtual_tx"], hex_dig)
 
-        # print(time + " deviceId: " + device_id + " payload: " + payload)
-        #   str_packet_id = payload[:2]
-        # print("packed_id: " + str_packet_id)
-
     def test_parse_sigfox(self):
         data_dic = {
             "context": {
@@ -142,6 +138,74 @@ class AppTest(unittest.TestCase):
         self.assertEqual(1, self.dynamodb.return_persisted_times())
         self.assertEqual(expected_item, self.dynamodb.return_persisted_item())
 
+    def test_parsing_none_known_payload(self):
+        expected_item = {"virtual_tx": "A001", "time_json": "2017-01-21T12:12:12.001Z", "timeStamp": 1499366509000,
+                         "payload": "A1bb17f18198100734",
+                         "DevEUI": "260113E3", "type": "LORA", "extra": "{}"}
+        geolocation = Server.parse_payload(expected_item)
+        self.assertIsNone(geolocation)
+
+    def test_parsing_geolocation_payload(self):
+        expected_item = {"virtual_tx": "A001", "time_json": "2017-01-21T12:12:12.001Z", "timeStamp": 1499366509000,
+                         "payload": "10bb17f18198100734",
+                         "DevEUI": "260113E3", "type": "LORA", "extra": "{}"}
+
+        geolocation = Server.parse_payload(expected_item)
+        self.assertIsNotNone(geolocation)
+
+        payload = expected_item["payload"]
+        lat_hex = payload[2:8]
+        lat_str = int(lat_hex, 16)
+        lat = (lat_str * 180 / 16777215) - 90
+        lng_hex = payload[8:14]
+        lng_str = int(lng_hex, 16)
+        lng = (lng_str * 360 / 16777215) - 180
+        self.assertEqual(1499366509000, geolocation["timeStamp"])
+        self.assertIsNotNone(geolocation["GEO"])
+
+        # AppTest.printGeoLocation(lat, lat_hex, lat_str, lng_hex, lng_str, payload, lng)
+
+        self.assertEqual(str(lat), geolocation["GEO"]["lat"])
+        self.assertEqual(str(lng), geolocation["GEO"]["lng"])
+
+    @staticmethod
+    def printGeoLocation(lat, lat_hex, lat_str, lng_hex, lng_str, payload, lng):
+        str_packet_id = str_packet_id = payload[:2]
+        print("payload:\t" + payload)
+        print("packed_id:\t" + str_packet_id)
+        print("lat_hex:\t" + lat_hex)
+        print("lat_str\t" + str(lat_str))
+        print("lat\t" + str(lat))
+        print("lng_hex:\t" + lng_hex)
+        print("lng_str:\t" + str(lng_str))
+        print("lat: " + str(lat) + ", lng: " + str(lng))
+
+    def test_not_update_data_in_DynamoDB_if_None(self):
+        server = Server(self.dynamodb, None, self.log)
+        expected_item = None
+
+        server.update_data(expected_item)
+        self.assertEqual(0, self.dynamodb.return_updated_times())
+
+    def test_update_data_in_DynamoDB(self):
+        server = Server(self.dynamodb, None, self.log)
+        expected_item = {
+            "timeStamp": 1499366509000,
+            "GEO": {"lat": "12.5", "lng": "1.4"}
+        }
+
+        server.update_data(expected_item)
+        self.assertEqual(1, self.dynamodb.return_updated_times())
+        self.assertEqual(
+            {"timeStamp": 1499366509000},
+            self.dynamodb.return_updated_item()["Key"])
+        self.assertEqual(
+            'SET geo = :val',
+            self.dynamodb.return_updated_item()["UpdateExpression"])
+        self.assertEqual(
+            {':val': {"lat": "12.5", "lng": "1.4"}},
+            self.dynamodb.return_updated_item()["ExpressionAttributeValues"])
+
 
 class TestLog:
     def __init__(self):
@@ -187,13 +251,31 @@ class TestDynamoDB:
     def __init__(self):
         self.Item = ''
         self.persisted = 0
+        self.updated = 0
+        self.Key = ''
+        self.UpdateExpression = ''
+        self.ExpressionAttributeValues = ''
 
     def put_item(self, Item):
         self.Item = Item
         self.persisted += 1
+
+    def update_item(self, Key, UpdateExpression, ExpressionAttributeValues):
+        self.Key = Key
+        self.UpdateExpression = UpdateExpression
+        self.ExpressionAttributeValues = ExpressionAttributeValues
+        self.updated += 1
 
     def return_persisted_item(self):
         return self.Item
 
     def return_persisted_times(self):
         return self.persisted
+
+    def return_updated_item(self):
+        return {"Key": self.Key,
+                "UpdateExpression": self.UpdateExpression,
+                "ExpressionAttributeValues": self.ExpressionAttributeValues}
+
+    def return_updated_times(self):
+        return self.updated

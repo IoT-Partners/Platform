@@ -42,6 +42,20 @@ def realtime_lambda_function(event, context):
     return "worked"
 
 
+@app.lambda_function()
+def realtime_parsing_payload(event, context):
+    app.log.debug("Parsing payload")
+
+    for record in event["Records"]:
+        message = record["Sns"]["Message"]
+        message_dic = json.loads(message)
+        parsed = Server.parse_payload(message_dic)
+        server.update_data(parsed)
+
+    app.log.debug("Parsing payload done")
+    return "worked"
+
+
 @app.route('/lambda')
 def insert_data_in_lambda():
     app.log.debug("insert_data_in_lambda")
