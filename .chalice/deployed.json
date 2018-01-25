@@ -6,6 +6,10 @@
       "platform-dev-realtime_lambda_function": {
         "arn": "arn:aws:lambda:eu-west-1:488643450383:function:platform-dev-realtime_lambda_function",
         "type": "pure_lambda"
+      },
+      "platform-dev-realtime_parsing_payload": {
+        "arn": "arn:aws:lambda:eu-west-1:488643450383:function:platform-dev-realtime_parsing_payload",
+        "type": "pure_lambda"
       }
     },
     "backend": "api",

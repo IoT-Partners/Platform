@@ -35,17 +35,25 @@ def realtime_lambda_function(event, context):
         message = record["Sns"]["Message"]
         message_dic = json.loads(message)
         print("This is the SNS message! " + message_dic["DevEUI"])
-        print("Print all the message: " + json.dumps(message_dic))
         server.persist_data(message_dic)
+        server.publish_data_payload_parser(message_dic)
 
     app.log.debug("realtime lambda done")
     return "worked"
 
 
-@app.route('/lambda')
-def insert_data_in_lambda():
-    app.log.debug("insert_data_in_lambda")
-    return server.publish_data()
+@app.lambda_function()
+def realtime_parsing_payload(event, context):
+    app.log.debug("Parsing payload")
+
+    for record in event["Records"]:
+        message = record["Sns"]["Message"]
+        message_dic = json.loads(message)
+        parsed = Server.parse_payload(message_dic)
+        server.update_data(parsed)
+
+    app.log.debug("Parsing payload done")
+    return "worked"
 
 
 @app.route('/')
