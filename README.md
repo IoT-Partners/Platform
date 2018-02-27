@@ -2,6 +2,8 @@
 
 This repository is an [**AWS Chalice**](https://github.com/aws/chalice) project that automates the creation of a Serverless platform. It creates the AWS Lambda, AWS Gateway and AWS Roles necessary to create the platform.
 
+![Alt text](IoT_Partners_Serverless_Platform.png?raw=true "Serverless Architecture")
+
 ## Working with Chalice
 
 ### Setting up AWS CLI
