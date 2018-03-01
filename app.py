@@ -53,7 +53,7 @@ def realtime_parsing_payload(event, context):
         message = record["Sns"]["Message"]
         message_dic = json.loads(message)
         parsed = Server.parse_payload(message_dic)
-        virtual_tx = message["virtual_tx"]
+        virtual_tx = message_dic["virtual_tx"]
         server.dispatch_alarm(virtual_tx, parsed)
         server.update_data(parsed)
 
