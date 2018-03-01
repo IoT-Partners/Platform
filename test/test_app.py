@@ -23,7 +23,8 @@ class AppTest(unittest.TestCase):
     def setUp(self):
         self.sns_client = TestSNS()
         self.log = TestLog()
-        self.dynamodb = TestDynamoDB()
+        self.dynamodb_device_data = TestDynamoDB()
+        self.dynamodb_device = TestDynamoDB()
         self.str_data = '{"DevEUI_uplink": {"Time": "2017-03-11T11:52:50.412+01:00","DevEUI": "0004A30B001C3306",' \
                         '"FPort": "7","FCntUp": "1","MType": "2","FCntDn": "2","payload_hex": "10bb17f18198100734",' \
                         '"mic_hex": "c00c1cfa","Lrcid": "00000127","LrrRSSI": "-64.000000","LrrSNR": "9.000000",' \
@@ -79,7 +80,7 @@ class AppTest(unittest.TestCase):
             "query_params": {
                 "data": "10bb17f18198100734",
                 "id": "260113E2",
-                "time": "1515360218723"
+                "time": "1515360218"
             },
             "stage_vars": {},
             "uri_params": {}
@@ -87,7 +88,7 @@ class AppTest(unittest.TestCase):
 
         parsed_dic = Server.parse_sigfox_dic(data_dic)
 
-        d = datetime.utcfromtimestamp(int("1515360218723") / 1e3)
+        d = datetime.utcfromtimestamp(int("1515360218") * 1000 / 1e3)
         json_date = str(d.isoformat()) + "Z"
 
         virtual_tx = "260113E2" + "-" + json_date
@@ -95,7 +96,7 @@ class AppTest(unittest.TestCase):
         hex_dig = hash_object.hexdigest()
 
         self.assertEqual(parsed_dic["time_json"], json_date)
-        self.assertEqual(parsed_dic["timeStamp"], int("1515360218723"))
+        self.assertEqual(parsed_dic["timeStamp"], int("1515360218"))
         self.assertEqual(parsed_dic["payload"], "10bb17f18198100734")
         self.assertEqual(parsed_dic["DevEUI"], "260113E2")
         self.assertEqual(parsed_dic["type"], "SIGFOX")
@@ -117,7 +118,7 @@ class AppTest(unittest.TestCase):
             "virtual_tx": "2dd66154468fa5d433420f5bad5d3f580f3dab46fa33e127ef69c511f641ae2f"
         }
 
-        server = Server(None, self.sns_client, self.log)
+        server = Server(None, None, self.sns_client, self.log)
         expected_message = json.dumps(data_to_publish)
         server.publish_data_store_device(data_to_publish)
         self.assertEqual(1, self.sns_client.return_published_times())
@@ -125,7 +126,7 @@ class AppTest(unittest.TestCase):
         self.assertEqual("arn:aws:sns:eu-west-1:488643450383:StoreDeviceData", self.sns_client.return_topicarn())
 
     def test_persist_data_to_DynamoDB(self):
-        server = Server(self.dynamodb, None, self.log)
+        server = Server(self.dynamodb_device_data, None, None, self.log)
         expected_item = {
             'title': "The Big New Movie",
             'year': 2015,
@@ -135,8 +136,8 @@ class AppTest(unittest.TestCase):
             }
         }
         server.persist_data(expected_item)
-        self.assertEqual(1, self.dynamodb.return_persisted_times())
-        self.assertEqual(expected_item, self.dynamodb.return_persisted_item())
+        self.assertEqual(1, self.dynamodb_device_data.return_persisted_times())
+        self.assertEqual(expected_item, self.dynamodb_device_data.return_persisted_item())
 
     def test_parsing_none_known_payload(self):
         expected_item = {"virtual_tx": "A001", "time_json": "2017-01-21T12:12:12.001Z", "timeStamp": 1499366509000,
@@ -168,6 +169,75 @@ class AppTest(unittest.TestCase):
         self.assertEqual(str(lat), geolocation["GEO"]["lat"])
         self.assertEqual(str(lng), geolocation["GEO"]["lng"])
 
+    # Example query:
+    # http "https://d8dsx2bkn9.execute-api.eu-west-1.amazonaws.com/api/sigfox?time=1510098998&id=260113E3&data=02180AE4"
+    def test_parsing_keep_alive_payload(self):
+        expected_item = {"virtual_tx": "A001", "time_json": "2017-01-21T12:12:12.001Z", "timeStamp": 1499366509000,
+                         "payload": "02180AE4",
+                         "DevEUI": "260113E3", "type": "LORA", "extra": "{}"}
+
+        keep_alive = Server.parse_payload(expected_item)
+        self.assertIsNotNone(keep_alive)
+
+        payload = expected_item["payload"]
+        interval = payload[2:4]
+        interval_int = int(interval, 16)
+
+        voltatge_hex = payload[4:8]
+        voltatge_hex_dec = int(voltatge_hex, 16) / 1000
+
+        self.assertEqual(1499366509000, keep_alive["timeStamp"])
+        self.assertIsNotNone(keep_alive["KA"])
+
+        self.assertEqual(str(interval_int), keep_alive["KA"]["interval"])
+        self.assertEqual(str(voltatge_hex_dec), keep_alive["KA"]["voltage"])
+
+    def test_dispatch_alarm_Keep_Alive_low_value(self):
+        server = Server(None, None, self.sns_client, self.log)
+        virtual_tx = "AE1234567"
+        data = {"timeStamp": "1499366509000",
+                "DevEUI": "260113E3",
+                "KA":
+                    {"interval": "24",
+                     "voltage": "2.456"}}
+
+        server.dispatch_alarm(virtual_tx, data)
+
+        data.update({"virtual_tx": virtual_tx})
+        expected_message = json.dumps(data)
+
+        self.assertEqual(1, self.sns_client.return_published_times())
+        self.assertEqual("arn:aws:sns:eu-west-1:488643450383:NotifySNS", self.sns_client.return_topicarn())
+        self.assertEqual(expected_message, self.sns_client.return_message())
+        self.assertEqual("Triggered Alarm 260113E3", self.sns_client.return_subject())
+
+    def test_not_update_data_in_DynamoDB_if_None(self):
+        server = Server(self.dynamodb_device_data, None, None, self.log)
+        expected_item = None
+
+        server.update_data(expected_item)
+        self.assertEqual(0, self.dynamodb_device_data.return_updated_times())
+
+    def test_update_data_in_DynamoDB(self):
+        server = Server(self.dynamodb_device_data, None, None, self.log)
+        expected_item = {
+            "timeStamp": 1499366509000,
+            "DevEUI": "260113E3",
+            "GEO": {"lat": "12.5", "lng": "1.4"}
+        }
+
+        server.update_data(expected_item)
+        self.assertEqual(1, self.dynamodb_device_data.return_updated_times())
+        self.assertEqual(
+            {"timeStamp": 1499366509000, "DevEUI": "260113E3"},
+            self.dynamodb_device_data.return_updated_item()["Key"])
+        self.assertEqual(
+            'SET geo = :val',
+            self.dynamodb_device_data.return_updated_item()["UpdateExpression"])
+        self.assertEqual(
+            {':val': {"lat": "12.5", "lng": "1.4"}},
+            self.dynamodb_device_data.return_updated_item()["ExpressionAttributeValues"])
+
     @staticmethod
     def printGeoLocation(lat, lat_hex, lat_str, lng_hex, lng_str, payload, lng):
         str_packet_id = str_packet_id = payload[:2]
@@ -179,33 +249,6 @@ class AppTest(unittest.TestCase):
         print("lng_hex:\t" + lng_hex)
         print("lng_str:\t" + str(lng_str))
         print("lat: " + str(lat) + ", lng: " + str(lng))
-
-    def test_not_update_data_in_DynamoDB_if_None(self):
-        server = Server(self.dynamodb, None, self.log)
-        expected_item = None
-
-        server.update_data(expected_item)
-        self.assertEqual(0, self.dynamodb.return_updated_times())
-
-    def test_update_data_in_DynamoDB(self):
-        server = Server(self.dynamodb, None, self.log)
-        expected_item = {
-            "timeStamp": 1499366509000,
-            "DevEUI": "260113E3",
-            "GEO": {"lat": "12.5", "lng": "1.4"}
-        }
-
-        server.update_data(expected_item)
-        self.assertEqual(1, self.dynamodb.return_updated_times())
-        self.assertEqual(
-            {"timeStamp": 1499366509000, "DevEUI": "260113E3"},
-            self.dynamodb.return_updated_item()["Key"])
-        self.assertEqual(
-            'SET geo = :val',
-            self.dynamodb.return_updated_item()["UpdateExpression"])
-        self.assertEqual(
-            {':val': {"lat": "12.5", "lng": "1.4"}},
-            self.dynamodb.return_updated_item()["ExpressionAttributeValues"])
 
 
 class TestLog:
@@ -246,6 +289,9 @@ class TestSNS:
 
     def return_published_times(self):
         return self.published
+
+    def return_subject(self):
+        return self.Subject
 
 
 class TestDynamoDB:
