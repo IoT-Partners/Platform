@@ -211,6 +211,18 @@ class AppTest(unittest.TestCase):
         self.assertEqual(expected_message, self.sns_client.return_message())
         self.assertEqual("Triggered Alarm 260113E3", self.sns_client.return_subject())
 
+    def test_no_dispatch_alarm_for_Keep_Alive_high_value(self):
+        server = Server(None, None, self.sns_client, self.log)
+        data = {"timeStamp": "1499366509000",
+                "DevEUI": "260113E3",
+                "KA":
+                    {"interval": "24",
+                     "voltage": "2.856"}}
+
+        server.dispatch_alarm("AE1234567", data)
+
+        self.assertEqual(0, self.sns_client.return_published_times())
+
     def test_not_update_data_in_DynamoDB_if_None(self):
         server = Server(self.dynamodb_device_data, None, None, self.log)
         expected_item = None
