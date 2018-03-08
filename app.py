@@ -6,7 +6,7 @@ Here we have all the lambda definitions and Gateway calls
 @mail: eduard@iot-partners.com
 """
 
-from chalice import Chalice, NotFoundError, Response
+from chalice import Chalice, NotFoundError, Response, BadRequestError
 import json
 import os
 import boto3
@@ -18,13 +18,16 @@ app = Chalice(app_name='platform')
 app.log.setLevel(logging.DEBUG)
 app.debug = True
 
-DEVICE_TABLE = os.getenv('APP_TABLE_NAME', 'defaultTable')
+DEVICE_DATA_TABLE = os.getenv('APP_TABLE_NAME', 'defaultTable')
+DEVICE_TABLE = os.getenv('DEVICES_TABLE_NAME', 'defaultTable')
 SNS_TOPIC = os.getenv('SNS_TOPIC', 'defaultSNS')
 
-table = boto3.resource('dynamodb').Table(DEVICE_TABLE)
+device_data_table = boto3.resource('dynamodb').Table(DEVICE_DATA_TABLE)
+device_table = boto3.resource('dynamodb').Table(DEVICE_TABLE)
+
 sns_client = boto3.client('sns')
 
-server = Server(table, sns_client, app.log)
+server = Server(device_data_table, device_table, sns_client, app.log)
 
 
 @app.lambda_function()
@@ -50,6 +53,8 @@ def realtime_parsing_payload(event, context):
         message = record["Sns"]["Message"]
         message_dic = json.loads(message)
         parsed = Server.parse_payload(message_dic)
+        virtual_tx = message_dic["virtual_tx"]
+        server.dispatch_alarm(virtual_tx, parsed)
         server.update_data(parsed)
 
     app.log.debug("Parsing payload done")
@@ -75,7 +80,7 @@ def lora():
         return parsed_json
     except KeyError:
             app.log.error("Error parsing LORA document")
-            raise NotFoundError()
+            raise BadRequestError("Error parsing LORA document")
 
 
 @app.route('/sigfox')
@@ -84,7 +89,9 @@ def sigfox():
         parsed_dic = Server.parse_sigfox_dic(app.current_request.to_dict())
         app.log.debug("Received event virtual_tx:" + parsed_dic["virtual_tx"])
         server.publish_data_store_device(parsed_dic)
-        return parsed_dic
+        return Response(body='',
+                        status_code=200,
+                        headers={'Content-Type': 'text/plain'})
     except KeyError:
         app.log.error("Error parsing SIGFOX document")
-        raise NotFoundError()
+        raise BadRequestError("Error parsing SIGFOX document")

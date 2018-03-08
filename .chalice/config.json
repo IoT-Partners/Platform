@@ -6,6 +6,7 @@
       "api_gateway_stage": "api",
       "environment_variables": {
         "APP_TABLE_NAME": "DeviceData",
+        "DEVICES_TABLE_NAME": "DeviceData",
         "SNS_TOPIC": "StoreDeviceData"
       }
     }
