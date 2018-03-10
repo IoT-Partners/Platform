@@ -91,3 +91,23 @@ Deleting role name helloworld-dev
 $ pip install unittest2
 $ python -m unittest 
 ```
+
+### Querying DynamoDB ###
+Some useful links:
+* [Best Practices for DynamodDB](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/BestPractices.html)
+* [Working with Scans](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Scan.html) 
+* [Scans ConditionExpressions](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.ConditionExpressions.html)
+* [Choosing the Right DynamoDB Partition Key](https://aws.amazon.com/es/blogs/database/choosing-the-right-dynamodb-partition-key/)
+
+Counting all items at DeviceData
+```commandline
+aws dynamodb scan --table-name DeviceData --select "COUNT"
+```
+
+Getting all elements that had the extended Keep Alive
+```commandline
+aws dynamodb scan 
+     --table-name DeviceData 
+     --filter-expression "attribute_exists(ka)"
+```
+
