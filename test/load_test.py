@@ -4,23 +4,25 @@
 import aiohttp
 import asyncio
 import async_timeout
+from datetime import datetime
+import dateutil
+import time
 from aiohttp import ClientSession
 
 loop = asyncio.get_event_loop()
 
 tasks = []
-# I'm using test server localhost, but you can use any url
-# url = "http://localhost:8080/{}"
-url = 'http://httpbin.org/get'
+url = 'https://d8dsx2bkn9.execute-api.eu-west-1.amazonaws.com/api/sigfox?time={}&id={}&data=02180AE4&test=test'
 
 async def fetch_url(url):
     async with ClientSession() as session:
         async with session.get(url) as response:
             response = await response.read()
-            print(response)
+            print("fetched url" + url)
 
-for i in range(5):
+for i in range(10000):
     # task = asyncio.ensure_future(fetch_url(url.format(i)))
-    task = asyncio.ensure_future(fetch_url(url))
+    task = asyncio.ensure_future(fetch_url(url.format(str(int(round(time.time()))), "LoadTest" + str(i))))
     tasks.append(task)
 loop.run_until_complete(asyncio.wait(tasks))
+
