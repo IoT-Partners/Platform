@@ -60,6 +60,7 @@ class AppTest(unittest.TestCase):
         self.assertEqual(parsed_json["extra"], json.dumps(jsonbody))
         self.assertEqual(parsed_json["virtual_tx"], hex_dig)
 
+    # http "https://d8dsx2bkn9.execute-api.eu-west-1.amazonaws.com/api/sigfox?time=1515360218&id=IDTest&data=02180AE4"
     def test_parse_sigfox(self):
         data_dic = {
             "context": {
@@ -101,6 +102,28 @@ class AppTest(unittest.TestCase):
         self.assertEqual(parsed_dic["DevEUI"], "260113E2")
         self.assertEqual(parsed_dic["type"], "SIGFOX")
         self.assertEqual(parsed_dic["virtual_tx"], hex_dig)
+
+    # http "https://d8dsx2bkn9.execute-api.eu-west-1.amazonaws.com/api/sigfox?time=1515360218&id=IDTest&data=02180AE4&test=test"
+    def test_parse_sigfox_with_test_data(self):
+        data_dic = {
+            "method": "GET",
+            "query_params": {
+                "data": "10bb17f18198100734",
+                "id": "260113E2",
+                "time": "1515360218",
+                "test": "test"
+            },
+            "stage_vars": {},
+            "uri_params": {}
+        }
+
+        parsed_dic = Server.parse_sigfox_dic(data_dic)
+
+        self.assertEqual(parsed_dic["timeStamp"], int("1515360218"))
+        self.assertEqual(parsed_dic["payload"], "10bb17f18198100734")
+        self.assertEqual(parsed_dic["DevEUI"], "260113E2")
+        self.assertEqual(parsed_dic["type"], "SIGFOX")
+        self.assertEqual(parsed_dic["test"], "test")
 
     def test_publishing_data_to_SNS(self):
         data_to_publish = {

@@ -91,3 +91,35 @@ Deleting role name helloworld-dev
 $ pip install unittest2
 $ python -m unittest 
 ```
+
+### Load Testing ###
+We created an async client to do the load test. For that we are using [AIOHTTP](https://aiohttp.readthedocs.io/en/stable/).
+Some useful links:
+* [Making 1 Milion request with python](https://pawelmhm.github.io/asyncio/python/aiohttp/2016/04/22/asyncio-aiohttp.html)
+* [Making 100 Milion requests with python](https://www.artificialworlds.net/blog/2017/06/12/making-100-million-requests-with-python-aiohttp/)
+* [Claypoole: Threadpool tools for Clojure](https://github.com/TheClimateCorporation/claypoole) 
+
+Run the load test:
+```commandline
+$ python test/load_test.py 
+```
+
+### Querying DynamoDB ###
+Some useful links:
+* [Best Practices for DynamodDB](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/BestPractices.html)
+* [Working with Scans](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Scan.html) 
+* [Scans ConditionExpressions](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.ConditionExpressions.html)
+* [Choosing the Right DynamoDB Partition Key](https://aws.amazon.com/es/blogs/database/choosing-the-right-dynamodb-partition-key/)
+
+Counting all items at DeviceData
+```commandline
+aws dynamodb scan --table-name DeviceData --select "COUNT"
+```
+
+Getting all elements that had the extended Keep Alive
+```commandline
+aws dynamodb scan 
+     --table-name DeviceData 
+     --filter-expression "attribute_exists(ka)"
+```
+

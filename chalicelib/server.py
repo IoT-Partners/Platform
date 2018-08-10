@@ -168,6 +168,10 @@ class Server:
         virtual_tx = device_id + "-" + json_date
         hash_object = hashlib.sha256(virtual_tx.encode())
         hex_dig = hash_object.hexdigest()
+        parsed_result = {"virtual_tx": hex_dig, "timeStamp": int(time), "time_json": json_date, "payload": payload,
+         "DevEUI": device_id, "type": "SIGFOX"}
 
-        return {"virtual_tx": hex_dig, "timeStamp": int(time), "time_json": json_date, "payload": payload,
-                "DevEUI": device_id, "type": "SIGFOX"}
+        if "test" in sigfox_dic["query_params"]:
+            parsed_result["test"] = sigfox_dic["query_params"]["test"]
+
+        return parsed_result
